@@ -30,6 +30,8 @@ const baseConfig: RadioConfig = {
     sf: 7,
     cr: 5,
   },
+  path_hash_mode: 0,
+  path_hash_mode_supported: false,
 };
 
 const baseHealth: HealthStatus = {

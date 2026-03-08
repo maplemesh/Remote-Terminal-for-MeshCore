@@ -128,6 +128,8 @@ class RadioManager:
         self._setup_lock: asyncio.Lock | None = None
         self._setup_in_progress: bool = False
         self._setup_complete: bool = False
+        self.path_hash_mode: int = 0
+        self.path_hash_mode_supported: bool = False
 
     async def _acquire_operation_lock(
         self,
@@ -272,6 +274,22 @@ class RadioManager:
                             "set_flood_scope failed (firmware may not support it): %s", exc
                         )
 
+                    # Query path hash mode support (best-effort; older firmware won't report it)
+                    try:
+                        device_query = await mc.commands.send_device_query()
+                        if device_query and "path_hash_mode" in device_query.payload:
+                            self.path_hash_mode = device_query.payload["path_hash_mode"]
+                            self.path_hash_mode_supported = True
+                            logger.info("Path hash mode: %d (supported)", self.path_hash_mode)
+                        else:
+                            self.path_hash_mode = 0
+                            self.path_hash_mode_supported = False
+                            logger.debug("Firmware does not report path_hash_mode")
+                    except Exception as exc:
+                        self.path_hash_mode = 0
+                        self.path_hash_mode_supported = False
+                        logger.debug("Failed to query path_hash_mode: %s", exc)
+
                     # Sync contacts/channels from radio to DB and clear radio
                     logger.info("Syncing and offloading radio data...")
                     result = await sync_and_offload_all(mc)
@@ -412,6 +430,8 @@ class RadioManager:
             await self._meshcore.disconnect()
             self._meshcore = None
             self._setup_complete = False
+            self.path_hash_mode = 0
+            self.path_hash_mode_supported = False
             logger.debug("Radio disconnected")
 
     async def reconnect(self, *, broadcast_on_success: bool = True) -> bool:

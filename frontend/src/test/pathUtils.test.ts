@@ -41,6 +41,8 @@ function createConfig(overrides: Partial<RadioConfig> = {}): RadioConfig {
     tx_power: 10,
     max_tx_power: 20,
     radio: { freq: 915, bw: 250, sf: 10, cr: 8 },
+    path_hash_mode: 0,
+    path_hash_mode_supported: false,
     ...overrides,
   };
 }

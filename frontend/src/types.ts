@@ -13,6 +13,8 @@ export interface RadioConfig {
   tx_power: number;
   max_tx_power: number;
   radio: RadioSettings;
+  path_hash_mode: number;
+  path_hash_mode_supported: boolean;
 }
 
 export interface RadioConfigUpdate {
@@ -21,6 +23,7 @@ export interface RadioConfigUpdate {
   lon?: number;
   tx_power?: number;
   radio?: RadioSettings;
+  path_hash_mode?: number;
 }
 
 export interface FanoutStatusEntry {
