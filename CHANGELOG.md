@@ -1,3 +1,17 @@
+## [2.6.0] - 2026-03-08
+
+Feature: A11y improvements
+Feature: New themes
+Feature: Backfill channel sender identity when available
+Feature: Modular fanout bus, including Webhooks, more customizable community MQTT, and Apprise
+Bugfix: Unreads now respect blocklist
+Bugfix: Unreads can't accumulate on an open thread
+Bugfix: Channel name in broadcasts
+Bugfix: Add missing httpx dependency
+Bugfix: Improvements to radio startup frontend-blocking time and radio status reporting
+Misc: Improved button signage for app movement
+Misc: Test, performance, and documentation improvements
+
 ## [2.5.0] - 2026-03-05
 
 Feature: Far better accessibility across the app (with far to go)
