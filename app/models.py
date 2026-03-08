@@ -2,8 +2,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.path_utils import infer_hash_size
-
 
 class Contact(BaseModel):
     public_key: str = Field(description="Public key (64-char hex)")
@@ -12,6 +10,7 @@ class Contact(BaseModel):
     flags: int = 0
     last_path: str | None = None
     last_path_len: int = -1
+    out_path_hash_mode: int = 0
     last_advert: int | None = None
     lat: float | None = None
     lon: float | None = None
@@ -34,7 +33,7 @@ class Contact(BaseModel):
             "flags": self.flags,
             "out_path": self.last_path or "",
             "out_path_len": self.last_path_len,
-            "out_path_hash_mode": infer_hash_size(self.last_path or "", self.last_path_len) - 1,
+            "out_path_hash_mode": self.out_path_hash_mode,
             "adv_lat": self.lat if self.lat is not None else 0.0,
             "adv_lon": self.lon if self.lon is not None else 0.0,
             "last_advert": self.last_advert if self.last_advert is not None else 0,
@@ -54,6 +53,10 @@ class Contact(BaseModel):
             "flags": radio_data.get("flags", 0),
             "last_path": radio_data.get("out_path"),
             "last_path_len": radio_data.get("out_path_len", -1),
+            "out_path_hash_mode": radio_data.get(
+                "out_path_hash_mode",
+                -1 if radio_data.get("out_path_len", -1) == -1 else 0,
+            ),
             "lat": radio_data.get("adv_lat"),
             "lon": radio_data.get("adv_lon"),
             "last_advert": radio_data.get("last_advert"),

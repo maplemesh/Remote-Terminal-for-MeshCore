@@ -691,9 +691,11 @@ async def _process_advertisement(
         assert existing is not None  # Guaranteed by the conditions that set use_existing_path
         path_len = existing.last_path_len if existing.last_path_len is not None else -1
         path_hex = existing.last_path or ""
+        out_path_hash_mode = existing.out_path_hash_mode
     else:
         path_len = new_path_len
         path_hex = new_path_hex
+        out_path_hash_mode = packet_info.path_hash_size - 1
 
     logger.debug(
         "Parsed advertisement from %s: %s (role=%d, lat=%s, lon=%s, path_len=%d)",
@@ -738,6 +740,7 @@ async def _process_advertisement(
         "last_seen": timestamp,
         "last_path": path_hex,
         "last_path_len": path_len,
+        "out_path_hash_mode": out_path_hash_mode,
         "first_seen": timestamp,  # COALESCE in upsert preserves existing value
     }
 

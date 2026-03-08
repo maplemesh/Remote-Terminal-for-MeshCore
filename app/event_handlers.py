@@ -211,6 +211,7 @@ async def on_path_update(event: "Event") -> None:
     # so if path fields are absent here we treat this as informational only.
     path = payload.get("path")
     path_len = payload.get("path_len")
+    path_hash_mode = payload.get("path_hash_mode")
     if path is None or path_len is None:
         logger.debug(
             "PATH_UPDATE for %s has no path payload, skipping DB update", contact.public_key[:12]
@@ -225,7 +226,28 @@ async def on_path_update(event: "Event") -> None:
         )
         return
 
-    await ContactRepository.update_path(contact.public_key, str(path), normalized_path_len)
+    normalized_path_hash_mode: int | None
+    if path_hash_mode is None:
+        # Legacy firmware/library payloads only support 1-byte hop hashes.
+        normalized_path_hash_mode = -1 if normalized_path_len == -1 else 0
+    else:
+        normalized_path_hash_mode = None
+        try:
+            normalized_path_hash_mode = int(path_hash_mode)
+        except (TypeError, ValueError):
+            logger.warning(
+                "Invalid path_hash_mode in PATH_UPDATE for %s: %r",
+                contact.public_key[:12],
+                path_hash_mode,
+            )
+            normalized_path_hash_mode = None
+
+    await ContactRepository.update_path(
+        contact.public_key,
+        str(path),
+        normalized_path_len,
+        normalized_path_hash_mode,
+    )
 
 
 async def on_new_contact(event: "Event") -> None:

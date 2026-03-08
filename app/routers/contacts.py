@@ -110,6 +110,7 @@ async def create_contact(
                     "flags": existing.flags,
                     "last_path": existing.last_path,
                     "last_path_len": existing.last_path_len,
+                    "out_path_hash_mode": existing.out_path_hash_mode,
                     "last_advert": existing.last_advert,
                     "lat": existing.lat,
                     "lon": existing.lon,
@@ -139,6 +140,7 @@ async def create_contact(
         "flags": 0,
         "last_path": None,
         "last_path_len": -1,
+        "out_path_hash_mode": -1,
         "last_advert": None,
         "lat": None,
         "lon": None,
@@ -462,7 +464,7 @@ async def reset_contact_path(public_key: str) -> dict:
     """Reset a contact's routing path to flood."""
     contact = await _resolve_contact_or_404(public_key)
 
-    await ContactRepository.update_path(contact.public_key, "", -1)
+    await ContactRepository.update_path(contact.public_key, "", -1, -1)
     logger.info("Reset path to flood for %s", contact.public_key[:12])
 
     # Push the updated path to radio if connected and contact is on radio

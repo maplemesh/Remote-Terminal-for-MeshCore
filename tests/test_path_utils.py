@@ -5,7 +5,6 @@ import pytest
 from app.path_utils import (
     decode_path_byte,
     first_hop_hex,
-    infer_hash_size,
     path_wire_len,
     split_path_hex,
 )
@@ -125,60 +124,96 @@ class TestFirstHopHex:
         assert first_hop_hex("", 0) is None
 
 
-class TestInferHashSize:
-    def test_one_byte(self):
-        assert infer_hash_size("1a2b3c", 3) == 1
-
-    def test_two_byte(self):
-        assert infer_hash_size("1a2b3c4d", 2) == 2
-
-    def test_three_byte(self):
-        assert infer_hash_size("1a2b3c4d5e6f", 2) == 3
-
-    def test_empty_defaults_to_1(self):
-        assert infer_hash_size("", 0) == 1
-
-    def test_inconsistent_defaults_to_1(self):
-        assert infer_hash_size("1a2b3", 2) == 1
-
-    def test_zero_hop_count_defaults_to_1(self):
-        assert infer_hash_size("1a2b", 0) == 1
-
-
 class TestContactToRadioDictHashMode:
-    """Test that Contact.to_radio_dict() correctly derives out_path_hash_mode."""
+    """Test that Contact.to_radio_dict() preserves the stored out_path_hash_mode."""
 
-    def test_1byte_hops(self):
+    def test_preserves_1byte_mode(self):
         from app.models import Contact
 
-        c = Contact(public_key="aa" * 32, last_path="1a2b3c", last_path_len=3)
-        d = c.to_radio_dict()
-        assert d["out_path_hash_mode"] == 0  # infer_hash_size=1, mode=0
-
-    def test_2byte_hops(self):
-        from app.models import Contact
-
-        c = Contact(public_key="bb" * 32, last_path="1a2b3c4d", last_path_len=2)
-        d = c.to_radio_dict()
-        assert d["out_path_hash_mode"] == 1  # infer_hash_size=2, mode=1
-
-    def test_3byte_hops(self):
-        from app.models import Contact
-
-        c = Contact(public_key="cc" * 32, last_path="1a2b3c4d5e6f", last_path_len=2)
-        d = c.to_radio_dict()
-        assert d["out_path_hash_mode"] == 2  # infer_hash_size=3, mode=2
-
-    def test_no_path_defaults_to_mode0(self):
-        from app.models import Contact
-
-        c = Contact(public_key="dd" * 32, last_path=None, last_path_len=-1)
+        c = Contact(
+            public_key="aa" * 32,
+            last_path="1a2b3c",
+            last_path_len=3,
+            out_path_hash_mode=0,
+        )
         d = c.to_radio_dict()
         assert d["out_path_hash_mode"] == 0
 
-    def test_empty_path_defaults_to_mode0(self):
+    def test_preserves_2byte_mode(self):
         from app.models import Contact
 
-        c = Contact(public_key="ee" * 32, last_path="", last_path_len=0)
+        c = Contact(
+            public_key="bb" * 32,
+            last_path="1a2b3c4d",
+            last_path_len=2,
+            out_path_hash_mode=1,
+        )
         d = c.to_radio_dict()
-        assert d["out_path_hash_mode"] == 0
+        assert d["out_path_hash_mode"] == 1
+
+    def test_preserves_3byte_mode(self):
+        from app.models import Contact
+
+        c = Contact(
+            public_key="cc" * 32,
+            last_path="1a2b3c4d5e6f",
+            last_path_len=2,
+            out_path_hash_mode=2,
+        )
+        d = c.to_radio_dict()
+        assert d["out_path_hash_mode"] == 2
+
+    def test_preserves_flood_mode(self):
+        from app.models import Contact
+
+        c = Contact(
+            public_key="dd" * 32,
+            last_path=None,
+            last_path_len=-1,
+            out_path_hash_mode=-1,
+        )
+        d = c.to_radio_dict()
+        assert d["out_path_hash_mode"] == -1
+
+    def test_preserves_mode_with_zero_bytes_in_path(self):
+        from app.models import Contact
+
+        c = Contact(
+            public_key="ee" * 32,
+            last_path="aa00bb00",
+            last_path_len=2,
+            out_path_hash_mode=1,
+        )
+        d = c.to_radio_dict()
+        assert d["out_path_hash_mode"] == 1
+
+
+class TestContactFromRadioDictHashMode:
+    """Test that Contact.from_radio_dict() preserves explicit path hash mode."""
+
+    def test_preserves_mode_from_radio_payload(self):
+        from app.models import Contact
+
+        d = Contact.from_radio_dict(
+            "aa" * 32,
+            {
+                "adv_name": "Alice",
+                "out_path": "aa00bb00",
+                "out_path_len": 2,
+                "out_path_hash_mode": 1,
+            },
+        )
+        assert d["out_path_hash_mode"] == 1
+
+    def test_flood_falls_back_to_minus_one(self):
+        from app.models import Contact
+
+        d = Contact.from_radio_dict(
+            "bb" * 32,
+            {
+                "adv_name": "Bob",
+                "out_path": "",
+                "out_path_len": -1,
+            },
+        )
+        assert d["out_path_hash_mode"] == -1

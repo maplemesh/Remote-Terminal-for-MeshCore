@@ -54,17 +54,3 @@ def first_hop_hex(path_hex: str, hop_count: int) -> str | None:
     """
     hops = split_path_hex(path_hex, hop_count)
     return hops[0] if hops else None
-
-
-def infer_hash_size(path_hex: str, hop_count: int) -> int:
-    """Derive bytes-per-hop from path hex length and hop count.
-
-    Returns 1 as default for ambiguous or legacy cases.
-    """
-    if hop_count <= 0 or not path_hex:
-        return 1
-    hex_per_hop = len(path_hex) // hop_count
-    byte_per_hop = hex_per_hop // 2
-    if byte_per_hop in (1, 2, 3) and hex_per_hop * hop_count == len(path_hex):
-        return byte_per_hop
-    return 1

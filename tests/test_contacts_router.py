@@ -651,6 +651,7 @@ class TestResetPath:
         contact = await ContactRepository.get_by_key(KEY_A)
         assert contact.last_path == ""
         assert contact.last_path_len == -1
+        assert contact.out_path_hash_mode == -1
 
     @pytest.mark.asyncio
     async def test_reset_path_not_found(self, test_db, client):
@@ -661,7 +662,13 @@ class TestResetPath:
     @pytest.mark.asyncio
     async def test_reset_path_pushes_to_radio(self, test_db, client):
         """When radio connected and contact on_radio, pushes updated path."""
-        await _insert_contact(KEY_A, on_radio=True, last_path="1122", last_path_len=1)
+        await _insert_contact(
+            KEY_A,
+            on_radio=True,
+            last_path="1122",
+            last_path_len=1,
+            out_path_hash_mode=0,
+        )
 
         mock_mc = MagicMock()
         mock_result = MagicMock()
@@ -678,6 +685,10 @@ class TestResetPath:
 
         assert response.status_code == 200
         mock_mc.commands.add_contact.assert_called_once()
+        contact_payload = mock_mc.commands.add_contact.call_args.args[0]
+        assert contact_payload["out_path"] == ""
+        assert contact_payload["out_path_len"] == -1
+        assert contact_payload["out_path_hash_mode"] == -1
 
     @pytest.mark.asyncio
     async def test_reset_path_broadcasts_websocket_event(self, test_db, client):
@@ -725,6 +736,34 @@ class TestAddRemoveRadio:
         # Verify on_radio flag updated in DB
         contact = await ContactRepository.get_by_key(KEY_A)
         assert contact.on_radio is True
+
+    @pytest.mark.asyncio
+    async def test_add_to_radio_preserves_stored_out_path_hash_mode(self, test_db, client):
+        await _insert_contact(
+            KEY_A,
+            last_path="aa00bb00",
+            last_path_len=2,
+            out_path_hash_mode=1,
+        )
+
+        mock_mc = MagicMock()
+        mock_mc.get_contact_by_key_prefix = MagicMock(return_value=None)
+        mock_result = MagicMock()
+        mock_result.type = EventType.OK
+        mock_mc.commands.add_contact = AsyncMock(return_value=mock_result)
+
+        radio_manager._meshcore = mock_mc
+        with patch("app.dependencies.radio_manager") as mock_dep_rm:
+            mock_dep_rm.is_connected = True
+            mock_dep_rm.meshcore = mock_mc
+
+            response = await client.post(f"/api/contacts/{KEY_A}/add-to-radio")
+
+        assert response.status_code == 200
+        payload = mock_mc.commands.add_contact.call_args.args[0]
+        assert payload["out_path"] == "aa00bb00"
+        assert payload["out_path_len"] == 2
+        assert payload["out_path_hash_mode"] == 1
 
     @pytest.mark.asyncio
     async def test_add_already_on_radio(self, test_db, client):
