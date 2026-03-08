@@ -6,10 +6,30 @@ from contextlib import asynccontextmanager, nullcontext
 from pathlib import Path
 
 from meshcore import MeshCore
+from meshcore.commands.contact import ContactCommands
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Monkey-patch for meshcore library bug (meshcore==2.2.28):
+# ContactCommands.update_contact reads out_path_hash_mode from the contact
+# dict into a local variable, but line 145 uses the function *parameter*
+# path_hash_mode (which defaults to None) instead of the local variable.
+# This causes TypeError when add_contact → update_contact is called without
+# an explicit path_hash_mode.  Fix by defaulting to the dict value.
+# ---------------------------------------------------------------------------
+_original_update_contact = ContactCommands.update_contact
+
+
+async def _patched_update_contact(self, contact, path=None, flags=None, path_hash_mode=None):
+    if path_hash_mode is None and path is None:
+        path_hash_mode = contact.get("out_path_hash_mode", 0)
+    return await _original_update_contact(self, contact, path, flags, path_hash_mode)
+
+
+ContactCommands.update_contact = _patched_update_contact
 
 
 class RadioOperationError(RuntimeError):
